@@ -6,10 +6,15 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
 *.egg-info/
 dist/
 build/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg
 
 # C
 *.exe
@@ -27,8 +32,10 @@ contestants.dat
 *.swp
 *.swo
 *~
+*.code-workspace
 
 # OS
 .DS_Store
 Thumbs.db
 desktop.ini
+

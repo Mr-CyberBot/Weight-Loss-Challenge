@@ -5,16 +5,26 @@ A highly user friendly experience provided by the GUI that can be used for gathe
 
 ```
 Weight-Loss-Challenge/
-├── frontend/           # Python GUI (tkinter)
-│   ├── main.py        # Main application
-│   └── requirements.txt
-├── backend/           # C backend
-│   ├── weight_tracker.c
-│   ├── Makefile
-│   └── contestants.dat (generated)
-├── shared/            # Shared documentation
-│   └── spec.md    # API specification
-└── README.md
+├── frontend/              # Python GUI (tkinter)
+│   ├── main.py           # Main application
+│   ├── backend_api.py    # Backend communication layer
+│   ├── contestant_manager.py  # Business logic
+│   ├── ui_components.py  # UI components
+│   └── docs/             # Frontend documentation
+│       ├── README.md     # Documentation index
+│       ├── DEVELOPMENT.md    # Development setup
+│       └── ARCHITECTURE.md   # Code architecture
+├── backend/              # C backend
+│   ├── weight_tracker.c  # C backend implementation
+│   └── mock_backend.py   # Python mock for testing
+├── shared/               # Shared resources
+│   └── spec.md           # API specification
+├── .vscode/              # VS Code settings
+├── pyproject.toml        # Python tool config
+├── .flake8               # Flake8 config
+├── requirements-dev.txt  # Development dependencies
+├── dev.bat               # Development commands (Windows)
+└── README.md             # This file
 ```
 
 ## Setup Instructions
@@ -30,10 +40,6 @@ Weight-Loss-Challenge/
    ```bash
    gcc -Wall -Wextra -std=c11 -o weight_tracker.exe weight_tracker.c
    ```
-   Or use the Makefile:
-   ```bash
-   make
-   ```
 
 3. Test the backend:
    ```bash
@@ -43,17 +49,47 @@ Weight-Loss-Challenge/
 
 ### Frontend (Python) - Johnathan H.
 
-1. Ensure Python 3.x is installed (tkinter comes built-in)
+1. Ensure Python 3.11+ is installed (tkinter comes built-in)
 
 2. Navigate to the `frontend` directory:
    ```bash
    cd frontend
    ```
 
-3. Run the application:
+3. Create and activate virtual environment:
+   ```bash
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   ```
+
+4. Install development dependencies:
+   ```bash
+   pip install -r ../requirements-dev.txt
+   ```
+
+5. Run the application:
    ```bash
    python main.py
    ```
+
+**For detailed setup and development information**, see [`frontend/docs/DEVELOPMENT.md`](./frontend/docs/DEVELOPMENT.md)
+
+**For architecture and code structure**, see [`frontend/docs/ARCHITECTURE.md`](./frontend/docs/ARCHITECTURE.md)
+
+## Quick Commands (Windows)
+
+Use the `dev.bat` script for development tasks:
+
+```batch
+dev help           # Show all available commands
+dev install        # Install development dependencies
+dev run            # Run the application
+dev format         # Format code with Black and isort
+dev lint           # Check code style with Flake8
+dev type-check     # Run MyPy type checking
+dev check          # Run all checks (format + lint + type-check)
+dev clean          # Clean cache directories
+```
 
 ## How It Works
 
