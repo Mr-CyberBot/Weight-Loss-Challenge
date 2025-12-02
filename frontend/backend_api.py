@@ -1,73 +1,148 @@
 """
-Backend API - Handles communication with C backend
+Backend API - Handles all data operations with C calculator backend
 """
 
 import subprocess
 import json
 import os
 import sys
+from pathlib import Path
+from datetime import datetime
+
+
+DATA_FILE = os.path.join(os.path.dirname(__file__), "contestants.json")
+
+
+def load_contestants():
+    """
+    Load contestants from file
+
+    :return: Dictionary of contestants
+    :rtype: dict
+    """
+    if Path(DATA_FILE).exists():
+        try:
+            with open(DATA_FILE, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return {}
+    return {}
+
+
+def save_contestants(data):
+    """
+    Save contestants to file
+
+    :param data: Contestant data to save
+    :type data: dict
+    """
+    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def call_c_backend(command, *args):
+    """
+    Call the C calculator backend
+
+    :param command: Command to execute (age, weight_lost, percentage_lost)
+    :type command: str
+    :param args: Arguments for the command
+    :return: Result from C backend
+    :rtype: str or None
+    """
+    backend_exe = os.path.join(
+        os.path.dirname(__file__), "..", "backend", "data-manipulator.exe"
+    )
+
+    if not os.path.exists(backend_exe):
+        return None
+
+    try:
+        cmd = [backend_exe, command] + list(args)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            return result.stdout.strip()
+        return None
+    except Exception:
+        return None
 
 
 class BackendAPI:
-    """Interface for communicating with the C backend executable"""
+    """Interface for communicating with the data backend"""
 
-    def __init__(self, backend_path="../backend/weight_tracker.exe", use_mock=False):
-        self.backend_exe = backend_path
-        self.use_mock = use_mock
+    def __init__(self):
+        pass
 
-        # Try to use mock backend if C executable doesn't exist
-        if use_mock or not os.path.exists(self.backend_exe):
-            self.backend_exe = os.path.join(
-                os.path.dirname(__file__), "..", "backend", "mock_backend.py"
-            )
-            self.backend_exe = os.path.normpath(os.path.abspath(self.backend_exe))
-            self.is_python = True
-        else:
-            self.is_python = False
-
-    def is_available(self):
-        """Check if backend executable exists"""
-        return os.path.exists(self.backend_exe)
-
-    def _execute_command(self, command, data=None):
+    def _calculate_age(self, dob_str):
         """
-        Execute a command on the backend
+        Calculate age using C backend if available, otherwise use Python fallback
 
-        :param command: The command to execute
-        :type command: str
-        :param data: Optional data to pass to backend
-        :type data: dict
-        :return: Response from backend (parsed JSON)
-        :rtype: dict
+        :param dob_str: Date of birth in YYYY-MM-DD format
+        :type dob_str: str
+        :return: Age in years or None if invalid
+        :rtype: int or None
         """
+        result = call_c_backend("age", dob_str)
+        if result is not None:
+            try:
+                age = int(result)
+                return age if age >= 0 else None
+            except ValueError:
+                pass
+
+        # Fallback to Python calculation
         try:
-            if not self.is_available():
-                return {"error": "Backend executable not found. Please compile the C backend."}
+            dob = datetime.strptime(dob_str, "%Y-%m-%d")
+            today = datetime.today()
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            if age < 0:
+                return None
+            return age
+        except ValueError:
+            return None
 
-            # Prepare command with data
-            if self.is_python:
-                # Use the venv's python executable for consistency
-                cmd = [sys.executable, self.backend_exe, command]
-            else:
-                cmd = [self.backend_exe, command]
+    def _calculate_weight_lost(self, starting_weight, current_weight):
+        """
+        Calculate weight lost using C backend if available
 
-            if data:
-                cmd.append(json.dumps(data))
+        :param starting_weight: Starting weight
+        :type starting_weight: float
+        :param current_weight: Current weight
+        :type current_weight: float
+        :return: Weight lost
+        :rtype: float
+        """
+        result = call_c_backend("weight_lost", str(starting_weight), str(current_weight))
+        if result is not None:
+            try:
+                return float(result)
+            except ValueError:
+                pass
 
-            # Execute backend
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        return starting_weight - current_weight
 
-            if result.returncode == 0:
-                return json.loads(result.stdout)
-            else:
-                return {"error": result.stderr}
+    def _calculate_percentage_lost(self, weight_lost, starting_weight):
+        """
+        Calculate percentage lost using C backend if available
 
-        except json.JSONDecodeError:
-            return {"error": "Invalid response from backend"}
-        except subprocess.TimeoutExpired:
-            return {"error": "Backend timeout"}
-        except Exception as e:
-            return {"error": str(e)}
+        :param weight_lost: Weight lost in pounds
+        :type weight_lost: float
+        :param starting_weight: Starting weight
+        :type starting_weight: float
+        :return: Percentage lost
+        :rtype: float
+        """
+        result = call_c_backend("percentage_lost", str(weight_lost), str(starting_weight))
+        if result is not None:
+            try:
+                return float(result)
+            except ValueError:
+                pass
+
+        if starting_weight <= 0:
+            return 0.0
+        return (weight_lost / starting_weight) * 100.0
 
     def add_contestant(self, name, weight, dob):
         """
@@ -82,8 +157,25 @@ class BackendAPI:
         :return: Response from backend
         :rtype: dict
         """
-        data = {"name": name, "weight": weight, "dob": dob}
-        return self._execute_command("add", data)
+        contestants_db = load_contestants()
+
+        if name in contestants_db:
+            return {"error": "Contestant already exists"}
+
+        age = self._calculate_age(dob)
+        if age is None:
+            return {"error": "Invalid date of birth. Use YYYY-MM-DD format or date cannot be in future"}
+
+        contestants_db[name] = {
+            "date_of_birth": dob,
+            "age": age,
+            "starting_weight": weight,
+            "current_weight": weight,
+            "weight_lost": 0.0,
+            "percentage_lost": 0.0,
+        }
+        save_contestants(contestants_db)
+        return {"status": "ok"}
 
     def update_weight(self, name, weight):
         """
@@ -96,12 +188,50 @@ class BackendAPI:
         :return: Response from backend
         :rtype: dict
         """
-        data = {"name": name, "weight": weight}
-        return self._execute_command("update", data)
+        contestants_db = load_contestants()
+
+        if name not in contestants_db:
+            return {"error": "Contestant not found"}
+
+        contestant = contestants_db[name]
+        contestant["current_weight"] = weight
+        contestant["weight_lost"] = self._calculate_weight_lost(
+            contestant["starting_weight"], weight
+        )
+        contestant["percentage_lost"] = self._calculate_percentage_lost(
+            contestant["weight_lost"], contestant["starting_weight"]
+        )
+
+        save_contestants(contestants_db)
+        return {"status": "ok"}
 
     def get_rankings(self):
         """Get current rankings"""
-        return self._execute_command("rankings")
+        contestants_db = load_contestants()
+
+        if not contestants_db:
+            return {"rankings": "No contestants found"}
+
+        # Sort by percentage lost (descending)
+        sorted_contestants = sorted(
+            contestants_db.items(), key=lambda x: x[1]["percentage_lost"], reverse=True
+        )
+
+        rankings_text = ""
+        for i, (name, data) in enumerate(sorted_contestants, 1):
+            age = data.get("age", "N/A")
+            rankings_text += f"{i}. {name}\n"
+            rankings_text += (
+                f"   Starting: {data['starting_weight']:.1f} lbs | "
+                f"Current: {data['current_weight']:.1f} lbs\n"
+            )
+            rankings_text += (
+                f"   Lost: {data['weight_lost']:.1f} lbs "
+                f"({data['percentage_lost']:.1f}%)\n"
+            )
+            rankings_text += f"   Age: {age}\n\n"
+
+        return {"rankings": rankings_text}
 
     def delete_contestant(self, name):
         """
@@ -112,8 +242,14 @@ class BackendAPI:
         :return: Response from backend
         :rtype: dict
         """
-        data = {"name": name}
-        return self._execute_command("delete", data)
+        contestants_db = load_contestants()
+
+        if name not in contestants_db:
+            return {"error": "Contestant not found"}
+
+        del contestants_db[name]
+        save_contestants(contestants_db)
+        return {"status": "ok"}
 
     def get_contestants(self):
         """
@@ -122,7 +258,9 @@ class BackendAPI:
         :return: List of contestant names
         :rtype: dict
         """
-        return self._execute_command("list")
+        contestants_db = load_contestants()
+        names = list(contestants_db.keys())
+        return {"contestants": names}
 
     def get_contestant_info(self, name):
         """
@@ -133,32 +271,21 @@ class BackendAPI:
         :return: Contestant information
         :rtype: dict
         """
-        try:
-            if not self.is_available():
-                return {"error": "Backend executable not found. Please compile the C backend."}
+        contestants_db = load_contestants()
 
-            # Prepare command with contestant name
-            if self.is_python:
-                cmd = [sys.executable, self.backend_exe, "info", name]
-            else:
-                cmd = [self.backend_exe, "info", name]
+        if name not in contestants_db:
+            return {"error": "Contestant not found"}
 
-            # Execute backend
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        contestant = contestants_db[name]
+        return {
+            "name": name,
+            "date_of_birth": contestant.get("date_of_birth"),
+            "age": contestant.get("age"),
+            "starting_weight": contestant.get("starting_weight"),
+            "current_weight": contestant.get("current_weight"),
+        }
 
-            if result.returncode == 0:
-                return json.loads(result.stdout)
-            else:
-                return {"error": result.stderr}
-
-        except json.JSONDecodeError:
-            return {"error": "Invalid response from backend"}
-        except subprocess.TimeoutExpired:
-            return {"error": "Backend timeout"}
-        except Exception as e:
-            return {"error": str(e)}
-
-    def edit_contestant(self, name, dob=None, starting_weight=None):
+    def edit_contestant(self, name, dob=None, starting_weight=None, current_weight=None):
         """
         Edit a contestant's information
 
@@ -168,12 +295,45 @@ class BackendAPI:
         :type dob: str
         :param starting_weight: Starting weight
         :type starting_weight: float
+        :param current_weight: Current weight
+        :type current_weight: float
         :return: Response from backend
         :rtype: dict
         """
-        data = {"name": name}
+        contestants_db = load_contestants()
+
+        if name not in contestants_db:
+            return {"error": "Contestant not found"}
+
+        contestant = contestants_db[name]
+
         if dob is not None:
-            data["dob"] = dob
+            age = self._calculate_age(dob)
+            if age is None:
+                return {"error": "Invalid date of birth. Use YYYY-MM-DD format or date cannot be in future"}
+            contestant["date_of_birth"] = dob
+            contestant["age"] = age
+
         if starting_weight is not None:
-            data["starting_weight"] = starting_weight
-        return self._execute_command("edit", data)
+            contestant["starting_weight"] = starting_weight
+            # Recalculate weight lost and percentage
+            contestant["weight_lost"] = self._calculate_weight_lost(
+                starting_weight, contestant["current_weight"]
+            )
+            contestant["percentage_lost"] = self._calculate_percentage_lost(
+                contestant["weight_lost"], starting_weight
+            )
+        
+        if current_weight is not None:
+            contestant["current_weight"] = current_weight
+            # Recalculate weight lost and percentage
+            contestant["weight_lost"] = self._calculate_weight_lost(
+                contestant["starting_weight"], current_weight
+            )
+            contestant["percentage_lost"] = self._calculate_percentage_lost(
+                contestant["weight_lost"], contestant["starting_weight"]
+            )
+
+        save_contestants(contestants_db)
+        return {"status": "ok"}
+

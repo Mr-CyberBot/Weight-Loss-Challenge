@@ -24,7 +24,9 @@ build/
 *.dll
 *.so
 *.dylib
-contestants.dat
+
+# Data files
+contestants.json
 
 # IDE
 .vscode/

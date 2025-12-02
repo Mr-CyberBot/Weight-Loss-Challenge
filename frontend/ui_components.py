@@ -131,6 +131,15 @@ class InputPanel(ttk.Frame):
         """
         return self.contestant_combo.get()
 
+    def set_selected_contestant(self, name):
+        """
+        Set the selected contestant in dropdown
+
+        :param name: Contestant name to select
+        :type name: str
+        """
+        self.contestant_combo.set(name)
+
     def get_edit_dob(self):
         """
         Get edited date of birth
@@ -192,7 +201,6 @@ class ButtonPanel(ttk.Frame):
         self,
         parent,
         add_callback=None,
-        update_callback=None,
         rankings_callback=None,
         delete_callback=None,
         edit_callback=None,
@@ -201,14 +209,12 @@ class ButtonPanel(ttk.Frame):
         super().__init__(parent, **kwargs)
 
         self.add_callback = add_callback
-        self.update_callback = update_callback
         self.rankings_callback = rankings_callback
         self.delete_callback = delete_callback
         self.edit_callback = edit_callback
 
         ttk.Button(self, text="Add Contestant", command=self._on_add).pack(side=tk.LEFT, padx=5)
         ttk.Button(self, text="Update Info", command=self._on_edit).pack(side=tk.LEFT, padx=5)
-        ttk.Button(self, text="Update Weight", command=self._on_update).pack(side=tk.LEFT, padx=5)
         ttk.Button(self, text="View Rankings", command=self._on_rankings).pack(side=tk.LEFT, padx=5)
         ttk.Button(self, text="Delete Contestant", command=self._on_delete).pack(
             side=tk.LEFT, padx=5
@@ -221,10 +227,6 @@ class ButtonPanel(ttk.Frame):
     def _on_edit(self):
         if self.edit_callback:
             self.edit_callback()
-
-    def _on_update(self):
-        if self.update_callback:
-            self.update_callback()
 
     def _on_rankings(self):
         if self.rankings_callback:

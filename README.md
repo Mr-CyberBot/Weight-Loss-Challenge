@@ -1,143 +1,185 @@
 # Weight-Loss-Challenge
-A highly user friendly experience provided by the GUI that can be used for gathering contestant data for an annual Weight Loss Challenge.
+
+A user-friendly GUI application for managing an annual Weight Loss Challenge. Track contestants, monitor progress, and view rankings.
 
 ## Project Structure
 
 ```
 Weight-Loss-Challenge/
-├── frontend/              # Python GUI (tkinter)
-│   ├── main.py           # Main application
-│   ├── backend_api.py    # Backend communication layer
-│   ├── contestant_manager.py  # Business logic
-│   ├── ui_components.py  # UI components
-│   └── docs/             # Frontend documentation
-│       ├── README.md     # Documentation index
-│       ├── DEVELOPMENT.md    # Development setup
-│       └── ARCHITECTURE.md   # Code architecture
-├── backend/              # C backend
-│   ├── weight_tracker.c  # C backend implementation
-│   └── mock_backend.py   # Python mock for testing
-├── shared/               # Shared resources
-│   └── spec.md           # API specification
-├── .vscode/              # VS Code settings
-├── pyproject.toml        # Python tool config
-├── .flake8               # Flake8 config
-├── requirements-dev.txt  # Development dependencies
-├── dev.bat               # Development commands (Windows)
-└── README.md             # This file
+├── frontend/                 # Python GUI & data management
+│   ├── main.py               # Main application entry point
+│   ├── backend_api.py        # Data management & C backend calls
+│   ├── contestant_manager.py # Business logic
+│   ├── ui_components.py      # Reusable UI components
+│   ├── contestants.json      # Data storage (JSON)
+│   └── requirements.txt      # Python dependencies
+├── backend/                  # C calculator backend
+│   ├── data-manipulator.c      # C source code (age & weight calculations)
+│   ├── data-manipulator.exe    # Compiled executable
+│   └── Makefile              # Build configuration
+├── shared/                   # Shared resources
+│   └── spec.md               # API specification
+└── .vscode/                  # VS Code configuration
+    └── settings.json         # Auto-format & linting on save
 ```
 
-## Setup Instructions
+## Quick Start
 
-### Backend (C) - Samuel H.
+### 1. Setup Python Environment
 
-1. Navigate to the `backend` directory:
-   ```bash
-   cd backend
-   ```
+```powershell
+# Create virtual environment
+python -m venv venv
 
-2. Compile the C program:
-   ```bash
-   gcc -Wall -Wextra -std=c11 -o weight_tracker.exe weight_tracker.c
-   ```
+# Activate it
+.\venv\Scripts\Activate.ps1
 
-3. Test the backend:
-   ```bash
-   .\weight_tracker.exe add "{\"name\":\"Test\",\"weight\":200.0}"
-   .\weight_tracker.exe rankings
-   ```
-
-### Frontend (Python) - Johnathan H.
-
-1. Ensure Python 3.11+ is installed (tkinter comes built-in)
-
-2. Navigate to the `frontend` directory:
-   ```bash
-   cd frontend
-   ```
-
-3. Create and activate virtual environment:
-   ```bash
-   python -m venv venv
-   .\venv\Scripts\Activate.ps1
-   ```
-
-4. Install development dependencies:
-   ```bash
-   pip install -r ../requirements-dev.txt
-   ```
-
-5. Run the application:
-   ```bash
-   python main.py
-   ```
-
-**For detailed setup and development information**, see [`frontend/docs/DEVELOPMENT.md`](./frontend/docs/DEVELOPMENT.md)
-
-**For architecture and code structure**, see [`frontend/docs/ARCHITECTURE.md`](./frontend/docs/ARCHITECTURE.md)
-
-## Quick Commands (Windows)
-
-Use the `dev.bat` script for development tasks:
-
-```batch
-dev help           # Show all available commands
-dev install        # Install development dependencies
-dev run            # Run the application
-dev format         # Format code with Black and isort
-dev lint           # Check code style with Flake8
-dev type-check     # Run MyPy type checking
-dev check          # Run all checks (format + lint + type-check)
-dev clean          # Clean cache directories
+# Install dependencies (including linting tools)
+pip install -r frontend\requirements.txt
 ```
 
-## How It Works
+### 2. Compile C Backend (Optional)
 
-1. **Frontend (Python)**: 
-   - Provides a user-friendly GUI using tkinter
-   - Collects contestant data (name, weight)
-   - Calls the C backend executable with commands
-   - Displays results and rankings
+The C backend provides faster calculations. If not compiled, Python fallback is used.
 
-2. **Backend (C)**:
-   - Handles all data storage and calculations
-   - Stores contestant data in binary file
-   - Processes commands from frontend
-   - Returns JSON responses
+```powershell
+cd backend
+gcc -Wall -Wextra -std=c11 -o data-manipulator.exe data-manipulator.c
 
-3. **Communication**:
-   - Frontend calls backend via subprocess
-   - Data exchanged in JSON format
+# Or use Make
+make
+```
+
+Test it:
+```powershell
+.\data-manipulator.exe age 1990-05-15
+.\data-manipulator.exe weight_lost 200.0 190.0
+```
+
+### 3. Run Application
+
+```powershell
+python frontend\main.py
+```
+
+## VS Code Setup (Auto-Linting)
+
+**The project is already configured!** When you open Python files in VS Code:
+
+✅ **Auto-format on save** (Black formatter, 100 char line length)  
+✅ **Auto-organize imports** (isort)  
+✅ **Flake8 linting** (shows errors/warnings in editor)  
+✅ **MyPy type checking** (optional static typing)
+
+**Required VS Code Extensions:**
+- Python (ms-python.python)
+- Black Formatter (ms-python.black-formatter)
+- Flake8 (ms-python.flake8)
+
+Install dependencies to enable linting:
+```powershell
+pip install -r frontend\requirements.txt
+```
+
+All settings are in `.vscode/settings.json` - no additional configuration needed!
+
+## Architecture
+
+**Separation of Concerns:**
+- **Python Frontend**: Handles all data (JSON), UI, business logic
+- **C Backend**: Pure calculator (age, weight loss, percentages)
+- **Communication**: Python calls C backend via subprocess for calculations
+
+**Data Flow:**
+```
+User Input → Python GUI → Save to contestants.json
+                ↓
+         Call C backend for calculations (if available)
+                ↓
+         Python fallback if C not compiled
+                ↓
+         Display results in GUI
+```
 
 ## Features
 
-- 
+- ✅ Add contestants (name, date of birth, starting weight)
+- ✅ Update current weight
+- ✅ Automatic age calculation
+- ✅ Weight loss statistics (pounds lost, percentage)
+- ✅ Rankings sorted by percentage lost
+- ✅ Edit contestant information
+- ✅ Delete contestants
+- ✅ Persistent JSON storage
+- ✅ Auto-populate fields on selection
 
-## Development Workflow
+## Development
 
-### For Frontend Development (Python)
-- Work in the `frontend/` directory
-- Modify `main.py` for GUI changes
-- Test with the compiled backend
+**Python Development:**
+- Work in `frontend/` directory
+- Code is auto-formatted on save (Black, isort)
+- Linting shows issues in real-time (Flake8)
+- All data operations are in `backend_api.py`
 
-### For Backend Development (C)
-- 
+**C Development:**
+- Work in `backend/` directory
+- Only handles calculations (no JSON, no file I/O)
+- Compile with `gcc` or `make`
+- Test with command-line arguments
+
+**Code Quality:**
+```powershell
+# Format code
+black frontend --line-length=100
+
+# Check linting
+flake8 frontend --max-line-length=100
+
+# Type check
+mypy frontend
+```
 
 ## Git Workflow
 
-```bash
+```powershell
 # Pull latest changes
 git pull
 
 # Create feature branch
 git checkout -b feature/your-feature-name
 
-# Make changes and commit
+# Make changes, auto-format on save
+
+# Commit
 git add .
-git commit -m "Description of changes"
+git commit -m "feat: description of changes"
 
-# Push to GitHub
+# Push
 git push origin feature/your-feature-name
-
-# Create pull request on GitHub
 ```
+
+Then create a Pull Request on GitHub.
+
+## Data Storage
+
+- **File**: `frontend/contestants.json`
+- **Format**: JSON (human-readable)
+- **Contents**: All contestant data (name, DOB, age, weights, statistics)
+- **Managed by**: Python frontend (`backend_api.py`)
+- **Ignored by Git**: Listed in `.gitignore` to prevent committing user data
+
+## Troubleshooting
+
+**Application won't start:**
+- Ensure virtual environment is activated
+- Install dependencies: `pip install -r frontend\requirements.txt`
+
+**C backend not working:**
+- Check if `data-manipulator.exe` exists in `backend/` folder
+- If missing, app will use Python fallback (slightly slower)
+- Recompile: `gcc -Wall -Wextra -std=c11 -o data-manipulator.exe data-manipulator.c`
+
+**Linting not working in VS Code:**
+- Install required VS Code extensions (Python, Black, Flake8)
+- Install tools: `pip install -r frontend\requirements.txt`
+- Restart VS Code

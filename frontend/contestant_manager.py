@@ -13,8 +13,8 @@ class ContestantManager:
         self.contestants = []  # Track list of contestants
 
     def is_backend_available(self):
-        """Check if backend is available"""
-        return self.api.is_available()
+        """Check if backend is available - always True with Python fallback"""
+        return True
 
     def add_contestant(self, name, dob, start_weight):
         """
@@ -93,7 +93,7 @@ class ContestantManager:
 
         return result
 
-    def edit_contestant(self, name, dob=None, starting_weight=None):
+    def edit_contestant(self, name, dob=None, starting_weight=None, current_weight=None):
         """
         Edit a contestant's information
 
@@ -103,6 +103,8 @@ class ContestantManager:
         :type dob: str
         :param starting_weight: Starting weight
         :type starting_weight: float
+        :param current_weight: Current weight
+        :type current_weight: float
         :return: Response from backend
         :rtype: dict
         """
@@ -117,9 +119,18 @@ class ContestantManager:
                 float(starting_weight)
             except ValueError:
                 return {"error": "Starting weight must be a valid number"}
+        
+        if current_weight is not None:
+            try:
+                float(current_weight)
+            except ValueError:
+                return {"error": "Current weight must be a valid number"}
 
         return self.api.edit_contestant(
-            name, dob=dob, starting_weight=float(starting_weight) if starting_weight else None
+            name, 
+            dob=dob, 
+            starting_weight=float(starting_weight) if starting_weight else None,
+            current_weight=float(current_weight) if current_weight else None
         )
 
     def get_contestants(self):

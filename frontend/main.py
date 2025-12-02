@@ -26,7 +26,7 @@ class WeightLossChallengeApp:
                 "Backend Warning",
                 "Backend executable not found.\n"
                 "Please compile the C backend:\n"
-                "cd backend && gcc -Wall -Wextra -std=c11 -o weight_tracker.exe weight_tracker.c",
+                "cd backend && gcc -Wall -Wextra -std=c11 -o data-manipulator.exe data-manipulator.c",
             )
 
         self._setup_ui()
@@ -59,7 +59,6 @@ class WeightLossChallengeApp:
             self.main_frame,
             add_callback=self.add_contestant,
             edit_callback=self.edit_contestant,
-            update_callback=self.update_weight,
             rankings_callback=self.view_rankings,
             delete_callback=self.delete_contestant,
         )
@@ -89,32 +88,46 @@ class WeightLossChallengeApp:
 
     def edit_contestant(self):
         """
-        Edit a contestant's DOB and/or starting weight
+        Edit a contestant's DOB, starting weight, and/or current weight
         """
         name = self.input_panel.get_selected_contestant()
         dob = self.input_panel.get_edit_dob()
         start_weight = self.input_panel.get_edit_start_weight()
+        current_weight = self.input_panel.get_current_weight()
 
         if not name:
             messagebox.showwarning("Error", "Please select a contestant to edit")
             return
 
-        if not dob and not start_weight:
+        if not dob and not start_weight and not current_weight:
             messagebox.showwarning(
-                "Error", "Please enter at least DOB or Starting Weight to update"
+                "Error", "Please enter at least one field to update (DOB, Starting Weight, or Current Weight)"
             )
             return
 
-        # Convert start_weight to float if provided
+        # Convert weights to float if provided
         sw = None
+        cw = None
         if start_weight:
             try:
                 sw = float(start_weight)
             except ValueError:
                 messagebox.showerror("Error", "Starting weight must be a valid number")
                 return
+        
+        if current_weight:
+            try:
+                cw = float(current_weight)
+            except ValueError:
+                messagebox.showerror("Error", "Current weight must be a valid number")
+                return
 
-        result = self.manager.edit_contestant(name, dob=dob if dob else None, starting_weight=sw)
+        result = self.manager.edit_contestant(
+            name, 
+            dob=dob if dob else None, 
+            starting_weight=sw,
+            current_weight=cw
+        )
 
         if "error" in result:
             messagebox.showerror("Error", result["error"])
@@ -155,29 +168,13 @@ class WeightLossChallengeApp:
         if "error" not in info:
             self.input_panel.populate_edit_fields(info)
 
-    def update_weight(self):
-        """
-        Update contestant's current weight
-        """
-        name = self.input_panel.get_selected_contestant()
-        current_weight = self.input_panel.get_current_weight()
-
-        result = self.manager.update_weight(name, current_weight)
-
-        if "error" in result:
-            messagebox.showerror("Error", result["error"])
-            self.results_panel.append(f"❌ Error: {result['error']}\n")
-        else:
-            self.results_panel.append(f"✓ Updated weight for: {name}\n")
-            # Refresh the contestant info to show updated data
-            info = self.manager.get_contestant_info(name)
-            if "error" not in info:
-                self.input_panel.populate_edit_fields(info)
-
     def view_rankings(self):
         """
         View current rankings
         """
+        # Save current selection
+        current_selection = self.input_panel.get_selected_contestant()
+        
         result = self.manager.get_rankings()
 
         self.results_panel.clear()
@@ -188,8 +185,13 @@ class WeightLossChallengeApp:
         else:
             self.results_panel.append("=== Current Rankings ===\n\n")
             self.results_panel.append(result.get("rankings", "No data available"))
-            # Also refresh the dropdown
-            self._refresh_contestant_list()
+            # Refresh the dropdown but preserve selection
+            self.manager.refresh_contestants()
+            contestants = self.manager.get_contestants()
+            self.input_panel.update_contestant_list(contestants)
+            # Restore the previous selection if it still exists
+            if current_selection and current_selection in contestants:
+                self.input_panel.set_selected_contestant(current_selection)
 
     def delete_contestant(self):
         """
