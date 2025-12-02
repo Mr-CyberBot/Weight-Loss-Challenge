@@ -1,0 +1,2 @@
+# Python dependencies for Weight Loss Challenge Frontend
+# tkinter comes built-in with Python
